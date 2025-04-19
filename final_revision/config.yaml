@@ -1,0 +1,4 @@
+excel_file: ./data_info.xlsx
+cm_dir: /data5/shuyu/data/raw_fq_data/
+output_evaluate_dir: /data5/shuyu/result/nick_type/
+log_level: INFO
