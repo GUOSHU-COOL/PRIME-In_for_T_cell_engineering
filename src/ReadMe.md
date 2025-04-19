@@ -23,6 +23,8 @@ Run the script with a configuration file in YAML format:
 
 ```bash
 python batch_reads_type_classifier.py --config ./config.yaml
+```
+
 
 # sgRNA-caused Off-target Extraction Pipeline
 
