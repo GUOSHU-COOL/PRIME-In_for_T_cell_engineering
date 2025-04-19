@@ -27,7 +27,7 @@ python batch_reads_type_classifier.py --config ./config.yaml
 
 
 # sgRNA-caused Off-target Extraction Pipeline
-
+## Overview
 This script is designed to extract potential sgRNA off-target sequences from genome data for specific samples, perform window-based alignment, and output matching results and summary statistics.
 
 ## Input Files
@@ -63,42 +63,9 @@ For each sgRNA, the following will be generated:
 - `summary.xlsx`: Summary count of sgRNA-caused vs random matches for each sample
 - `new_output.xlsx`: Modified version of original `output.xlsx` with an additional `Category` column (`sgRNA_caused` or `random`)
 
-## Script Entry Point
-
-The main function used is:
+## Usage
 
 ```python
-process_sample_blastn(sample_raw_name, sample, output_dir, target_seq, rna_number)
+python sgRNA_analysis.py
 ```
 
-### Parameters:
-- `sample_raw_name`: Original sample name (e.g., AH2-KI)
-- `sample`: Renamed sample identifier (folder name)
-- `output_dir`: Directory for storing results
-- `target_seq`: sgRNA sequence
-- `rna_number`: Index of the sgRNA (1, 2, or 3)
-
-Called in a loop like this:
-
-```python
-for _, row in filtered_df.iterrows():
-    ...
-    for i, sgRNA in enumerate(sgRNAs, start=1):
-        if pd.notna(sgRNA):
-            process_sample_blastn(...)
-```
-
-## Notes
-
-- `Csn-KI` is specially renamed as `CH3-KI`
-- Both sense and antisense strand windows are supported (ends with GG or starts with CC)
-- The PAM sequence (last 3 bp) is excluded from alignment
-- Maximum mismatch allowed: <6
-
-## Dependencies
-
-Install required packages using:
-
-```bash
-pip install pandas biopython openpyxl
-```
