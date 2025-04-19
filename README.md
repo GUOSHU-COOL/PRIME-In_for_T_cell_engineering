@@ -49,22 +49,6 @@ After the Knock-in Type classify, we analysis sgRNA-caused Off-target type
 
 ## Running the sgRNA-caused Off-target analysis  
 
-
-## Input Files(see details in src dir)    
-
-### 1. `sgRNA.xlsx`
-### 2. Per-sample `output.xlsx`
-### 3. Transgenic `.fa` files
-## Output Files
-For each sgRNA, the following will be generated:
-
-- `extracted_sequences_{rna_number}.fasta`: Extracted target window sequences
-- `filtered_results_{rna_number}.json`: Filtered matching results (mismatch <6, ends with GG or starts with CC)
-- `window_seq_counts_{rna_number}.xlsx`: Sequence match statistics and normalized values (per 1000 UMIs)
-- `summary.xlsx`: Summary count of sgRNA-caused vs random matches for each sample
-- `new_output.xlsx`: Modified version of original `output.xlsx` with an additional `Category` column (`sgRNA_caused` or `random`)
-
-
 ```python
 python sgRNA_analysis.py
 ```
