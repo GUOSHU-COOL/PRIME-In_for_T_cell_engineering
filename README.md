@@ -25,8 +25,7 @@ To fix this, you can manually replace the relative paths in the script with abso
 
 ## Getting Set Up
 Installation
-
-# It's recommended (but not essential) to set up a conda environment to manage dependencies
+It's recommended (but not essential) to set up a conda environment to manage dependencies
 ```
 conda create -n PEM python=3.8
 conda activate PEM        
