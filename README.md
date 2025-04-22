@@ -12,8 +12,22 @@ To ensure successful execution of the pipeline, the following dependencies are r
 - [`trimmomatic`](https://github.com/timflutre/trimmomatic/) — Flexible read trimming tool for Illumina NGS data  
 - [`samtools`](https://github.com/samtools/samtools/) — Tool for manipulating alignments in the SAM/BAM format  
 - [`bedtools`](https://bedtools.readthedocs.io/en/latest/) — Genome arithmetic utility  
-- [`blastn`](https://github.com/asadprodhan/blastn/blob/main/README.md) — Nucleotide-Nucleotide BLAST  
+- [`blastn`](https://github.com/asadprodhan/blastn/blob/main/README.md) — Nucleotide-Nucleotide BLAST
 
+
+**Note on Path Configuration**             
+
+If you see a warning when running the script saying that certain software cannot be found, it's likely due to the use of relative paths in the src directory.
+To fix this, you can manually replace the relative paths in the script with absolute paths specific to your environment.
+
+## Create blastn db
+To generate the BLASTN database, run:
+```
+python generate_index_add_transgene_fa.py
+python generate_index_add_transgene_KI_fa.py     
+```
+
+---
 ## Running the Knock-in Type Classifier
 
 To run the full knock-in type classification pipeline, you must first create a manifest YAML file that describes all pipeline inputs, including a `data_info.xlsx` file which contains sample-specific metadata.
