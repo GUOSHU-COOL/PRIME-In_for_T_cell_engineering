@@ -20,6 +20,29 @@ To ensure successful execution of the pipeline, the following dependencies are r
 If you see a warning when running the script saying that certain software cannot be found, it's likely due to the use of relative paths in the src directory.
 To fix this, you can manually replace the relative paths in the script with absolute paths specific to your environment.
 
+
+
+
+## Getting Set Up
+Installation
+
+# It's recommended (but not essential) to set up a conda environment to manage dependencies
+```
+conda create -n PEM python=3.8
+conda activate PEM        
+
+git clone --recursive https://github.com/GUOSHU-COOL/PRIME-In_for_T_cell_engineering
+cd PRIME-In_for_T_cell_engineering
+
+pip install -r requirements.txt
+```
+## remove redundancy seq avoid multi alignment with transgene
+```
+cd src
+wget http://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz
+gunzip hg38.fa.gz
+python remove_specfic_seq_infa.py
+```
 ## Create blastn db
 To generate the BLASTN database, run:
 ```
