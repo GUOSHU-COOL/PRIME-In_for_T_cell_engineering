@@ -26,7 +26,7 @@ def batch_process_from_excel(config: dict) -> None:
         fq_r1 = os.path.join(cm_dir, clean_data_relative, sample, f"{sample}_R1.fq.gz")
         fq_r2 = os.path.join(cm_dir, clean_data_relative, sample, f"{sample}_R2.fq.gz")
 
-        # 拷贝到目标文件夹，改名防止覆盖
+        # copy to target file，change name to prevent to coverage
         dst_r1 = os.path.join(merged_dir, f"{sample}_R1.fq.gz")
         dst_r2 = os.path.join(merged_dir, f"{sample}_R2.fq.gz")
 
