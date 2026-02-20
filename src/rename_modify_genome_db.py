@@ -6,7 +6,7 @@ def copy_and_rename_folder(src_dir: str, dst_root: str, old_str: str, new_str: s
         raise FileNotFoundError(f"Source directory not found: {src_dir}")
 
     for root, dirs, files in os.walk(src_dir):
-        # 构建目标路径（并替换路径中的 CP2）
+        # Build the target path (and replace CP2 in the path)
 
         dst_path = os.path.join(dst_root,new_str)
         os.makedirs(dst_path, exist_ok=True)
@@ -18,12 +18,12 @@ def copy_and_rename_folder(src_dir: str, dst_root: str, old_str: str, new_str: s
             shutil.copy2(src_file, dst_file)
             print(f"Copied: {src_file} → {dst_file}")
 
-# 用法
+# example
 genome_directory = "/data5/wangxin/20241001_wcx/shuyu/genome/"
 dst_directory = "/data5/shuyu/result/modify_genome_db/"
 change_name_db=[["CP2","CCR5-P-T"],["CH2","CCR5-H-T"],["AP2","AAVS1-P-T"],["AH1","AAVS1-H-T"],["AP-KI","AAVS1-P-KI"],["AH-KI","AAVS1-H-KI"],["CP-KI","CCR5-P-KI"],["CH-KI","CCR5-H-KI"]]
 for i in change_name_db:
     src_directory = os.path.join(genome_directory, i[0])
-    # 调用函数
+    # call function
     copy_and_rename_folder(src_directory, dst_directory, old_str=i[0], new_str=i[1])
 
