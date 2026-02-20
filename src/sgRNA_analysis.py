@@ -8,14 +8,14 @@ from collections import Counter
 import re
 def extract_prefix(sample_name):
     """
-    从样本名中提取第一个数字之前的部分
-    例如 'AH2-OT1' -> 'AH2'
+    Extract the part before the first digit from the sample name
+    For example, 'ah2-ot1' -> 'AH2'
     """
-    match = re.match(r"^[^\d]*\d", sample_name)  # 匹配从头开始到第一个数字之前的字符
+    match = re.match(r"^[^\d]*\d", sample_name)  # Match the characters from the beginning to the first digit
     if match:
         return match.group(0)
     else:
-        return sample_name  # 如果没有找到匹配，返回原样本名
+        return sample_name  # If no match is found, return the original original name
 def process_sample_blastn(sample_raw_name,sample, output_dir, target_seq, rna_number):
     if sample_raw_name == "Csn-KI":
         sample_raw_name = "CH3-KI"
@@ -36,12 +36,12 @@ def process_sample_blastn(sample_raw_name,sample, output_dir, target_seq, rna_nu
     sample_name= extract_prefix(sample_raw_name) # for example 'AH2-OT1' -> 'AH2'
     genome_file = os.path.join("/data5/wangxin/20241001_wcx/shuyu/genome/", sample_name, f"{sample_name}_transgene.fa")
 
-    # 找出 `filtered_df` 里 `chr_seq` 但 `genome_file` 里没有的染色体
+    # Find the chromosomes in 'filtered_df' that are 'chr_seq' but not in 'genome_file'
     df_chr_set = set(filtered_df["chr_seq"])
     fasta_chr_set = set(record.id for record in SeqIO.parse(genome_file, "fasta"))
     missing_chr = df_chr_set - fasta_chr_set
 
-    print(f"这些 chr_seq 在 filtered_df 里有，但 genome_file 里没有: {missing_chr}")
+    print(f"These chr_seqs are in filtered_df, but not in genome_file: {missing_chr}")
 
     sequences = []
     empty_count = 0
@@ -53,19 +53,19 @@ def process_sample_blastn(sample_raw_name,sample, output_dir, target_seq, rna_nu
                 max_pos = max(start, send) + 100
                 seq_length = len(record.seq)
                 if min_pos >= seq_length or max_pos >= seq_length:
-                    print(f"染色体 {record.id}: start={start}, send={send} 超出范围，染色体长度={seq_length}")
+                    print(f"chrom {record.id}: start={start}, send={send} Out of range, chromosome length={seq_length}")
                 extracted_seq = record.seq[max(0, send - 1 - 100): start + 100] if start > send else record.seq[max(0,
                                                                                                                     start - 1 - 100): send + 100]
                 if len(extracted_seq) == 0:
                     empty_count += 1
-                    print(f"空序列: {record.id}, start={start}, send={send}")
+                    print(f"empty seq: {record.id}, start={start}, send={send}")
                 sequences.append(SeqRecord(Seq(str(extracted_seq)), id=f"{record.id}_{start}_{send}", description=""))
-    print(f"空序列数量: {empty_count}")
+    print(f"The number of empty sequences: {empty_count}")
     extracted_fasta = os.path.join(output_dir, f"extracted_sequences_{rna_number}.fasta")
     SeqIO.write(sequences, extracted_fasta, "fasta")
     sequences = list(SeqIO.parse(extracted_fasta, "fasta"))
-    print(f"Filtered DataFrame 行数: {len(filtered_df)}")
-    print(f"提取的 sequences 数量: {len(sequences)}")
+    print(f"Filtered DataFrame line number: {len(filtered_df)}")
+    print(f"The number of extracted sequences: {len(sequences)}")
     window_size = 23
     target_seq = target_seq.upper()
     match_results = []
@@ -74,15 +74,15 @@ def process_sample_blastn(sample_raw_name,sample, output_dir, target_seq, rna_nu
     for seq_record in sequences:
         seq = str(seq_record.seq).upper()
 
-        # 遍历每个窗口进行比对
+        # Traverse each window for comparison
         for i in range(len(seq) - window_size + 1):
             window_seq = seq[i:i + window_size]
-            # 计算窗口序列与目标序列的匹配情况
+            # Calculate the matching situation between the window sequence and the target sequence
             if window_seq.endswith("GG"):
                 matches = sum(1 for a, b in zip(window_seq[:-3], target_seq[:-3]) if a == b)
-                mismatch_count = window_size - matches-3  # 错配数
+                mismatch_count = window_size - matches-3  # mismatch numbers
 
-                if mismatch_count <6:  # 允许错配数小于6
+                if mismatch_count <6:  # The allowable mismatch number is less than 6
                     print("match")
                     match_results.append({
                         "sseqid": seq_record.id,
@@ -100,9 +100,9 @@ def process_sample_blastn(sample_raw_name,sample, output_dir, target_seq, rna_nu
                 reverse_complement_seq = str(Seq(window_seq).reverse_complement())
 
                 reverse_matches = sum(1 for a, b in zip(reverse_complement_seq[3:], target_seq[3:]) if a == b)
-                reverse_mismatch_count = window_size - reverse_matches - 3  # 错配数（排除结尾的 "GG"）
+                reverse_mismatch_count = window_size - reverse_matches - 3  # Mismatch number (excluding the "GG" at the end
 
-                if reverse_mismatch_count <6:  # 允许错配数小于6
+                if reverse_mismatch_count <6:  # The allowable mismatch number is less than 6
                     print("reverse match")
                     match_results.append({
                         "sseqid": seq_record.id,
@@ -133,20 +133,20 @@ def process_sample_blastn(sample_raw_name,sample, output_dir, target_seq, rna_nu
     summary_file = os.path.join(output_dir, "summary.xlsx")
     pd.DataFrame({"Sample": [sample], "sgRNA_caused": [sgRNA_caused], "random": [random],"all_UMIs":[all_UMIs]}).to_excel(summary_file,
                                                                                                     index=False)
-    # 统计 window_seq_rc 出现次数
+    # Count the occurrence times of window_seq_rc
     rc_counts = Counter(window_seq_list)
 
-    # 创建 DataFrame 并输出到 Excel
+    # Create a DataFrame and output it to Excel
     rc_df = pd.DataFrame(rc_counts.items(), columns=["window_seq", "Count"])
     rc_df["Normalized Count"] = (rc_df["Count"] / all_UMIs) * 1000  # 归一化
     excel_output_path = os.path.join(output_dir, f"window_seq_counts_{rna_number}.xlsx")
     rc_df.to_excel(excel_output_path, index=False)
-    print(f"window_seq_rc 统计已保存到: {excel_output_path}")
+    print(f"window_seq_rc‘s statistics have been saved: {excel_output_path}")
 
-    # 仅筛选第一列为 'offtargetKI' 的行
+    # Only filter the rows with the first column 'offtargetKI'
     filtered_df = df[df.iloc[:, 0] == 'offtargetKI']
 
-    # 仅对 filtered_df 进行匹配，并将结果填充回原 DataFrame
+    # Match only filtered_df and fill the result back into the original DataFrame
     df.loc[df.iloc[:, 0] == 'offtargetKI', "Category"] = filtered_df.apply(
         lambda row: "sgRNA_caused" if f"{row['chr_seq']}_{row['Start']}_{row['Send']}" in matched_ids else "random",
         axis=1
