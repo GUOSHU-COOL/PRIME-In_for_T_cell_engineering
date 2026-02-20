@@ -21,9 +21,9 @@ from common_analysis_utils import (
     group_genome_mapping
 )
 def get_edit_count(bam, chr_seq, consolidated_fq_tri_filtered_file, output_dir, sample, db,strand):
-    # 初始化字典
-    sm_main_chr_dic = {}  # 存储主染色体上的SM类型比对
-    ms_dic = {}  # 存储MS类型的比对
+    # Initialize the dictionary
+    sm_main_chr_dic = {}  # Store the SM type alignment on the main chromosome
+    ms_dic = {}  # Store the comparison of MS types
     sm_ki_dic = {}
     sm_translocation_dic = {}
     small_sm_deletion = {}
@@ -42,55 +42,55 @@ def get_edit_count(bam, chr_seq, consolidated_fq_tri_filtered_file, output_dir, 
     sm_translocation_type = {}
     deletion_type_length = {}
 
-    # 存储序列的字典
+    # A dictionary for storing sequences
     raw_fa_dic = {}
     print("consolidated_fq_tri_filtered_file",consolidated_fq_tri_filtered_file)
-    # 读取 FASTQ 文件
+    # Read FASTQ
     with open(consolidated_fq_tri_filtered_file, "r") as raw_fq:
         for record in SeqIO.parse(raw_fq, "fastq"):
             if record.seq is None:
                 print(f"empty序列: {record.id}")
             else:
-                raw_fa_dic[record.id] = str(record.seq)  # 记录 ID 和序列
+                raw_fa_dic[record.id] = str(record.seq)  # record ID and seq
 
-    # 读取BAM文件
+    # read BAM file
     bam_file = pysam.AlignmentFile(bam, 'rb', check_sq=False)
     for read in bam_file:
         if read.qname in raw_fa_dic:
             cigar = str(read.cigarstring)
             letter = re.findall('\D', cigar)
             number = re.findall('\d+', cigar)
-            number = list(map(int, number))  # 将数字部分转换为整数
+            number = list(map(int, number))  # Convert the numeric part to an integer
 
-            # 过滤包含H的CIGAR字符串
+            # Filter CIGAR strings containing 'H'
             if 'H' in letter:
                 print("H in CIGAR")
                 continue
 
 
-            condition2 = read.query_sequence.count('N') <= len(read.query_sequence) * 0.05  # N的数量不超过5%
+            condition2 = read.query_sequence.count('N') <= len(read.query_sequence) * 0.05  # The quantity of N does not exceed 5%
 
             if  condition2:
-                # 判断CIGAR字符串类型
+                # Determine the string type of the CIGAR
                 if 'S' in letter and 'M' in letter:
                     if letter.count('S') == 1 and letter.count('M') == 1:
                         if letter.index('S') < letter.index('M'):
-                            # 提取S部分的序列
+                            # Extract the sequence of part S
                             s_length = number[letter.index('S')]
                             s_sequence = read.query_sequence[:s_length]
-                            match_start_index = read.blocks[0][0] # 获取sam序列中match序列的起始 # 这个位点加一才是匹配上的 这个起始是0
+                            match_start_index = read.blocks[0][0] # Obtain the starting point of the match sequence in the sam sequence # plus 1 would match start from 0
                             match_end_index = read.blocks[0][1]
 
-                            # 获取M部分的比对染色体
-                            ref_name = read.reference_name  # 比对染色体名称
+                            # Obtain the alignment chromosome of part M
+                            ref_name = read.reference_name  # Name of the comparison chromosome
 
-                            # 判断M部分的比对染色体
+                            # Determine the alignment chromosome of part M
                             if ref_name == "chr_transgene":
-                                # 如果是transgene，归类到KI
+                                # if is transgene，categorize into KI
                                 #sm_ki_dic[read.qname] = [read.query_sequence, match_start_index, match_end_index, cigar,ref_name]
                                 sm_ki_dic[read.qname] = [read.query_sequence, cigar] # for unify
                             elif ref_name != chr_seq:
-                                # 如果是其他染色体，归类到Translocation
+                                # if is other chrom，categorize into  Translocation
                                 #sm_translocation_dic[read.qname] = [read.query_sequence, match_start_index, match_end_index, cigar,ref_name]
                                 sm_translocation_dic[read.qname] = [read.query_sequence, cigar]
                                 if strand =="+":
@@ -106,11 +106,11 @@ def get_edit_count(bam, chr_seq, consolidated_fq_tri_filtered_file, output_dir, 
                                                                          "reference_end": read.reference_end,
                                                                         }
                             else:
-                                # 如果是主染色体，归类到SM
+                                # If it is the main chromosome, it is categorize into SM
                                 #sm_main_chr_dic[read.qname] = [read.query_sequence, cigar]
                                 sm_main_chr_dic[read.qname] = [read.query_sequence, s_sequence, match_start_index,match_end_index, cigar]
                         else:
-                            # 处理MS类型
+                            # deal MS type
                             s_length = number[letter.index('S')]
                             s_sequence = read.query_sequence[-s_length:]
                             match_start_index = read.blocks[0][0]
@@ -118,14 +118,14 @@ def get_edit_count(bam, chr_seq, consolidated_fq_tri_filtered_file, output_dir, 
                             ms_dic[read.qname] = [read.query_sequence,s_sequence, match_start_index, match_end_index, cigar]
                             #ms_dic[read.qname] = [read.query_sequence,cigar]
                 elif 'M' in letter and ('D' in letter or 'I' in letter):
-                    # 严格判断是否为 M...M 形式
+                    # Strictly determine whether it is M... M-form
                     if len(letter) >= 3 and letter[0] == 'M' and letter[-1] == 'M':
-                        # 只要中间包含 D 或 I，就归入 small_indels_dic
+                        # As long as it contains D or I in the middle, it is categorized into small_indels_dic
                         if any(mid in letter[1:-1] for mid in ['D', 'I', 'M']):
                             small_indels_dic[read.qname] = [read.query_sequence, cigar]
                             match = re.findall(r'(\d+)D', cigar)
                             deletion_length = sum(map(int, match))
-                            # 存储到字典
+                            # save to dict
                             deletion_type_length[read.qname] = {
                                 "deletion_type": "small_indels_dic",  # small_indels_dic
                                 "deletion_length": deletion_length
@@ -139,15 +139,15 @@ def get_edit_count(bam, chr_seq, consolidated_fq_tri_filtered_file, output_dir, 
                 else:
                     other_dic[read.qname] = [read.query_sequence, cigar]
     # 输出统计结果
-    print('SM类型比对数量:', len(sm_main_chr_dic))
-    print('KI类型比对数量:', len(sm_ki_dic))
-    print('Translocation类型比对数量:', len(sm_translocation_dic))
-    print('Small Indels类型比对数量:', len(small_indels_dic))
-    print('WT类型比对数量:', len(wt_dic))
-    print('MS类型比对数量:', len(ms_dic))
-    print('Other类型比对数量:', len(other_dic))
+    print('SM type align number:', len(sm_main_chr_dic))
+    print('KI type align number:', len(sm_ki_dic))
+    print('Translocation type align number:', len(sm_translocation_dic))
+    print('Small Indels type align number:', len(small_indels_dic))
+    print('WT type align number:', len(wt_dic))
+    print('MS type align number:', len(ms_dic))
+    print('Other type align number:', len(other_dic))
 
-    # 将SM类型的S部分序列写入FASTA文件
+    # Write the sequence of the S part of the SM type to the FASTA file
     if len(sm_main_chr_dic)!=0:
         sm_main_chr_s_fa = os.path.join(output_dir, 'blastn', f'{sample}.aln_filtered_primeradd5bp_noadapter_consolidated_tri_SM_S.fa')
         os.makedirs(os.path.join(output_dir, 'blastn'), exist_ok=True) # create first
@@ -159,11 +159,11 @@ def get_edit_count(bam, chr_seq, consolidated_fq_tri_filtered_file, output_dir, 
         blastn(sm_main_chr_s_fa, db, sm_main_chr_s_fa_output)
         sm_main_chr_best_alignment_dict=extract_best_alignment_qstart(sm_main_chr_s_fa_output)
         small_sm_deletion, medium_sm_deletion, large_sm_deletion=categorize_sm(sm_main_chr_best_alignment_dict, sm_main_chr_dic,deletion_type_length,strand)
-        # 调用blastn进行比对（仅对主染色体上的SM类型）
-    # 将MS类型的S部分序列写入FASTA文件
+        # using blastn to align（only to SM type in main chromosome）
+    # Write the S part sequence of the MS type to the FASTA file
     os.makedirs(os.path.join(output_dir, 'blastn'), exist_ok=True)
 
-    # 将MS类型的S部分序列写入FASTA文件
+    # Write the S part sequence of the MS type to the FASTA file
     if len(ms_dic)!=0:
         ms_s_fa = os.path.join(output_dir, 'blastn', f'{sample}.aln_filtered_primeradd5bp_noadapter_consolidated_tri_MS_S.fa')
         with open(ms_s_fa, 'w') as f:
@@ -171,16 +171,16 @@ def get_edit_count(bam, chr_seq, consolidated_fq_tri_filtered_file, output_dir, 
                 s_seq = ms_dic[key][1]
                 f.write(f'>{key}\n{s_seq}\n')
 
-        # 定义blastn输出文件
+        # define blastn output file
         ms_s_fa_output = os.path.join(output_dir, 'blastn', f'{sample}.aln_filtered_noadapter_consolidated_tri_MS_S_fa_to_hg38fa_blastn_result.txt')
 
-        # 调用blastn进行比对（仅对主染色体上的MS类型）
+        # Call blastn for comparison (only for MS types on the main chromosome)
         blastn(ms_s_fa, db, ms_s_fa_output)
 
-        # 提取blastn比对结果中最佳对齐信息
+        # Extract the best alignment information from the blastn comparison results
         ms_main_chr_best_alignment_dict, ms_other_dict = extract_best_alignment_qend(ms_s_fa_output,ms_dic)
 
-        # 分类删除类型（根据比对的结果进行分类）
+        # Category deletion type (classify based on the comparison results)
         #ms_dic[read.qname] = [read.query_sequence,s_sequence, match_start_index, match_end_index, cigar]
         small_ms_deletion, medium_ms_deletion, large_ms_deletion, ms_translocation_dic,ms_ki_dic,ms_translocation_type= (
             categorize_ms(ms_main_chr_best_alignment_dict, ms_dic,chr_seq,deletion_type_length,strand))
@@ -189,41 +189,41 @@ def get_edit_count(bam, chr_seq, consolidated_fq_tri_filtered_file, output_dir, 
 
 def extract_best_alignment_qstart(blastn_result):
     """
-    提取BLASTN比对结果中每个查询序列的最佳比对（根据 qstart == 0）。
+    Extract the best alignment for each query sequence in the BLASTN alignment results (based on qstart == 0).
 
-    参数：
-    - blastn_result: BLASTN 比对结果文件路径
+    parameters：
+    - blastn_result: BLASTN alignment file path
 
     返回：
-    - best_alignment_dict: 存储每个查询序列的最佳比对信息
+    - best_alignment_dict: Store the best alignment information for each query sequence
     """
-    # 读取BLASTN比对结果
+    # read BLASTN alignment
     try:
         df = pd.read_csv(blastn_result, delimiter='\t', header=None)
         df.columns = ['qseqid', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen',
                       'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore']
 
-        # 按 qseqid 分组
+        # groupby qseqid 
         grouped = df.groupby('qseqid')
 
-        # 存储结果的字典
+        # A dictionary for storing the results
         best_alignment_dict = {}
 
-        # 遍历每组，提取 qstart == 0 的行
+        # Traverse each group and extract the ones where qstart == 0
         for name, group in grouped:
-            group = group[group['qstart'] == 1]  # 仅保留 qstart == 1 的行
+            group = group[group['qstart'] == 1]  # Only keep the rows where qstart == 1
 
             if not group.empty:
-                # 按照 序列比对百分比最大值的行
+                # Align the rows with the maximum percentage in sequence
                 max_row = group.loc[group['pident'].idxmax()]
 
-                # 解析所需字段
-                qseqid = max_row['qseqid']  # 作为 key
+                # Parse the required fields
+                qseqid = max_row['qseqid']  # as key
                 s_sseqid = max_row['sseqid']
                 s_sstart = int(max_row['sstart'])
                 s_send = int(max_row['send'])
 
-                # 存入字典
+                # Store in the dictionary
                 best_alignment_dict[qseqid] = {
                     'sseqid': s_sseqid,
                     'sstart': s_sstart,
@@ -232,67 +232,67 @@ def extract_best_alignment_qstart(blastn_result):
 
         return best_alignment_dict
     except Exception as e:
-        print(f"读取文件 {blastn_result} 时发生错误: {e}")
+        print(f"read file  {blastn_result} have mistake: {e}")
         return {}
 
 def extract_best_alignment_qend(blastn_result,ms_dic):
     """
-    提取BLASTN比对结果中每个查询序列的最佳比对（根据 qend == s_length）。
-    如果没有匹配上 qend == s_length 的比对，则将其放入 'other' 字典中。
+    Extract the best alignment for each query sequence in the BLASTN alignment results (based on qend == s_length).
+    If there is no matching of qend == s_length, put it in the 'other' dictionary.
 
-    参数：
-    - blastn_result: BLASTN 比对结果文件路径
-    - s_length: 用于比较的序列长度，筛选 qend == s_length 的比对
+    parameters：
+    - blastn_result: BLASTN alignment file path
+    - s_length: The sequence length used for comparison, filter the alignment of qend == s_length
 
-    返回：
-    - best_alignment_dict: 存储每个查询序列的最佳比对信息
-    - other_dict: 存储未匹配 qend == s_length 的查询序列
+    output：
+    - best_alignment_dict: Store the best alignment information for each query sequence
+    - other_dict: Store the query sequence that does not match qend == s_length
     """
-    # 读取BLASTN比对结果
+    # read BLASTN alignment
     try:
         df = pd.read_csv(blastn_result, delimiter='\t', header=None)
         df.columns = ['qseqid', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen',
                       'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore']
 
-        # 按 qseqid 分组
+        # groupby qseqid 
         grouped = df.groupby('qseqid')
 
-        # 存储结果的字典
+        # A dict for storing the results
         best_alignment_dict = {}
         other_dict = {}
 
-        # 遍历每组，提取 qend == s_length 的行
+        # Traverse each group and extract the lines qend == s_length
         for name, group in grouped:
             group_id=group['qseqid'].iloc[0]
             s_length=len(ms_dic[group_id][1])
             origin_seq=ms_dic[group_id][0]
             cigar=ms_dic[group_id][4]
             qseqid = group['qseqid'].iloc[0]
-            group = group[group['qend'] == s_length]  # 所有qseqid都是一个样
+            group = group[group['qend'] == s_length]  # all qseqid is same
 
             if not group.empty:
-                # 按照 序列比对百分比 最大值的行
+                # Align the rows with the maximum percentage in sequence
                 max_row = group.loc[group['pident'].idxmax()]
 
-                # 解析所需字段
-                qseqid = max_row['qseqid']  # 作为 key
+                # Parse the required fields
+                qseqid = max_row['qseqid']  # as key
                 s_sseqid = max_row['sseqid']
                 s_sstart = int(max_row['sstart'])
                 s_send = int(max_row['send'])
 
-                # 存入字典
+                # Store in the dictionary
                 best_alignment_dict[qseqid] = {
                     'sseqid': s_sseqid,
                     'sstart': s_sstart,
                     'send': s_send
                 }
             else:
-                # 如果没有匹配 qend == s_length，则放入 'other' 字典
+                # If qend == s_length is not matched, place it in the 'other' dictionary
                 other_dict[qseqid] = [origin_seq,cigar]
 
         return best_alignment_dict, other_dict
     except Exception as e:
-        print(f"读取文件 {blastn_result} 时发生错误: {e}")
+        print(f"read file  {blastn_result} have mistake: {e}")
         return {}, {}
 
 def categorize_sm(sm_main_chr_best_alignment_dict, sm_main_chr_dic,deletion_type_length,strand):
@@ -303,7 +303,7 @@ def categorize_sm(sm_main_chr_best_alignment_dict, sm_main_chr_dic,deletion_type
 
     for key in sm_main_chr_best_alignment_dict:
         if key in sm_main_chr_dic:
-            # 计算缺失大小
+            # Calculate the missing size
             match_start = sm_main_chr_dic[key][2] #both strand+ strand- and flag 0&16 start<end
             match_end = sm_main_chr_dic[key][3]
             start = sm_main_chr_best_alignment_dict[key]["sstart"] # -strand start>send
@@ -312,13 +312,13 @@ def categorize_sm(sm_main_chr_best_alignment_dict, sm_main_chr_dic,deletion_type
                 deletion_size = abs(send - match_end)
             else:
                 deletion_size = abs(match_start - send)
-            # 生成所有可能的坐标对
+            # Generate all possible coordinate pairs
             # sm_main_chr_dic[read.qname] = [read.query_sequence, cigar]
             #sm_main_chr_dic[read.qname] = [read.query_sequence, s_sequence, match_start_index, match_end_index, cigar]
-            # 构造值列表
+            # Construct value list
             value_list = [sm_main_chr_dic[key][0], sm_main_chr_dic[key][4]]
 
-            # 分类存入相应字典
+            # Classify and store in the corresponding dictionary
             if 0 <= deletion_size < 200:
                 small_deletion[key] = value_list
                 deletion_type_length[key] = {
@@ -343,7 +343,6 @@ def categorize_sm(sm_main_chr_best_alignment_dict, sm_main_chr_dic,deletion_type
                     "deletion_type": 'sm_other',  # other_dic
                     "deletion_length": deletion_size
                 }
-                # 使用logging记录到日志文件
                 #logging.debug(f"Key: {key}, Deletion size: {deletion_size}, Values: {value_list}")
 
     return small_deletion, medium_deletion, large_deletion
@@ -360,15 +359,14 @@ def categorize_ms(ms_main_chr_best_alignment_dict, ms_main_chr_dic,main_chr,dele
     ms_translocation_type={}
     for key, alignment_info in ms_main_chr_best_alignment_dict.items():
         if key in ms_main_chr_dic:
-            sseqid = alignment_info["sseqid"]  # 获取比对到的染色体编号
+            sseqid = alignment_info["sseqid"]  # get align chrom number
             sstart = alignment_info["sstart"]
             send = alignment_info["send"]
-            # 构造值列表
             value_list = [ms_main_chr_dic[key][0], ms_main_chr_dic[key][4]]
 
             if sseqid == main_chr:
                 # match_end- sstart
-                # 计算缺失大小
+                # Calculate the missing size
                 match_start = ms_main_chr_dic[key][2]
                 match_end = ms_main_chr_dic[key][3]
                 sstart = ms_main_chr_best_alignment_dict[key]["sstart"]
@@ -403,7 +401,7 @@ def categorize_ms(ms_main_chr_best_alignment_dict, ms_main_chr_dic,main_chr,dele
                     print(f"Unexpected deletion size: {deletion_size}")
 
             elif sseqid == "chr_transgene":
-                ki_events[key] = value_list  # 认为是 KI 事件
+                ki_events[key] = value_list  # regard as KI event
 
             else:
                 ms_translocation_type[key] = {"ref_name": sseqid,
@@ -417,32 +415,32 @@ def categorize_ms(ms_main_chr_best_alignment_dict, ms_main_chr_dic,main_chr,dele
 
 def extract_prefix(sample_name):
     """
-    从样本名中提取第一个数字之前的部分
-    例如 'AH2-OT1' -> 'AH2'
+    Extract the part before the first digit from the sample name
+    as 'AH2-OT1' -> 'AH2'
     """
-    match = re.match(r"^[^\d]*\d", sample_name)  # 匹配从头开始到第一个数字之前的字符
+    match = re.match(r"^[^\d]*\d", sample_name)  # Match the characters from the beginning to the first digit
     if match:
         return match.group(0)
     else:
-        return sample_name  # 如果没有找到匹配，返回原样本名
+        return sample_name  # If no match is found, return the original original name
 
 
 def add_columns_from_dicts(excel_file, deletion_type_length_type, ms_translocation_type, sm_translocation_type,
                            output_file):
-    # 读取 Excel 文件
-    df = pd.read_excel(excel_file, index_col=1)  # 使用第二列作为索引
+    # read Excel file
+    df = pd.read_excel(excel_file, index_col=1)  # Use the second column as the index
 
-    # 处理 deletion_type_length_type 字典，添加 deletion_type 和 deletion_length 列
+    # Handle the deletion_type_length_type dictionary and add the deletion_type and deletion_length columns
     df['deletion_type'] = df.index.map(lambda key: deletion_type_length_type.get(key, {}).get('deletion_type', None))
     df['deletion_length'] = df.index.map(
         lambda key: deletion_type_length_type.get(key, {}).get('deletion_length', None))
 
-    # 处理 ms_translocation_type 字典，添加 translocation_chr 列
+    # Handle the ms_translocation_type dictionary and add the translocation_chr column
     df['main_chr'] = df.index.map(lambda key: ms_translocation_type.get(key, {}).get('chr_seq', None))
     df['translocation_chr'] = df.index.map(lambda key: ms_translocation_type.get(key, {}).get('ref_name', None))
     df['reference_start'] = df.index.map(lambda key: ms_translocation_type.get(key, {}).get('reference_start', None))
     df['reference_end'] = df.index.map(lambda key: ms_translocation_type.get(key, {}).get('reference_end', None))
-    # 处理 sm_translocation_type 字典，并确保转换为 Series
+    # Handle the sm_translocation_type dictionary and make sure to convert it to Series
     df['main_chr'] = df['main_chr'].combine_first(
         pd.Series(df.index.map(lambda key: sm_translocation_type.get(key, {}).get('chr_seq', None)), index=df.index)
     )
@@ -458,133 +456,123 @@ def add_columns_from_dicts(excel_file, deletion_type_length_type, ms_translocati
                   index=df.index)
     )
 
-    # 保存为新的 Excel 文件
     df.to_excel(output_file)
-    print(f"✅ 数据已保存至 {output_file}")
+    print(f"✅ data have save to {output_file}")
 
 def save_dicts_to_excel(output_file,output_evaluate_sample_dir, **dicts):
     """
-    将多个字典保存到一个 Excel 文件中，每个字典的名字作为 "Category"（分类）。
+    Save multiple dictionaries to one Excel file, with the name of each dictionary as "Category"
 
-    参数：
-    - output_file: str, 输出 Excel 文件路径
-    - **dicts: 关键字参数，每个字典的 key 是序列 ID，value 是 [sequence, cigar]
+    parameters：
+    - output_file: str, output Excel filepath
+    - **dicts: key parameters，each dict key is sequence ID，value is [sequence, cigar]
     """
-    all_data = []  # 存储所有字典的数据
-    category_counts = {}  # 用于统计每个类别的数量
+    all_data = []  # Store all the data of the dictionaries
+    category_counts = {}  # Used for counting the quantity of each category
 
-    # 遍历字典
     for category, data_dict in dicts.items():
-        count = 0  # 统计当前类别的数量
+        count = 0  # Count the number of current categories
         for key, values in data_dict.items():
-            if len(values) >= 2:  # 确保有足够的数据
+            if len(values) >= 2:  # Make sure there is sufficient data
                 sequence, cigar = values[0], values[1]
                 all_data.append([category, key, sequence, cigar])
-                count += 1  # 更新当前类别的计数
-        category_counts[category] = count  # 保存类别数量
+                count += 1  # Update the count of the current category
+        category_counts[category] = count  # The number of saved categories
 
-    # 创建 DataFrame
     df = pd.DataFrame(all_data, columns=["Category", "Key", "Sequence", "CIGAR"])
 
-    # 保存为 Excel
     df.to_excel(output_file, index=False)
-    print(f"✅ 数据已保存至 {output_file}")
+    print(f"✅ data have save to {output_file}")
 
-    # 打印每个类别的数量
-    print("📊 各类别数量统计：")
+    # Print the quantity for each category
+    print("📊 the quantity for each category：")
     for category, count in category_counts.items():
-        print(f"  {category}: {count} 条数据")
-    # 计算类别总数
+        print(f"  {category}: {count} pieces of data")
+    # Calculate the total number of categories
     total_count = sum(category_counts.values())
 
-    # 计算每个类别的比例
+    # Calculate the proportion of each category
     category_proportions = {category: count / total_count for category, count in category_counts.items()}
 
-    # 打印每个类别的比例
-    print("📊 各类别比例统计：")
+    # Print the proportion of each category
+    print("📊 the proportion of each category：")
     for category, proportion in category_proportions.items():
         print(f"  {category}: {proportion * 100:.2f}%")
-    # 绘制堆叠柱状图
+    # Draw a stacked bar chart
     categories = list(category_proportions.keys())
     values = list(category_proportions.values())
-    # 提取 sample
+    # extract sample
     sample_name = os.path.basename(output_evaluate_sample_dir)
-    # 绘制堆叠柱状图
+
     plt.bar(categories, values, color='skyblue')
 
-    # 设置图表标题和标签
+
     plt.title(f"{sample_name} Proportion of Each Category in the Total Data", fontsize=16)
     plt.xlabel("Categories", fontsize=14)
     plt.ylabel("Proportion", fontsize=14)
 
-    # 将 x 轴标签旋转 45 度，避免堆叠
+
     plt.xticks(rotation=45, ha='right', fontsize=12)  # ha='right' 使标签右对齐，避免偏移
 
-    # 添加比例文本标签
+
     for i, (category, proportion) in enumerate(category_proportions.items()):
         plt.text(i, proportion + 0.01, f"{proportion * 100:.2f}%", ha='center', va='bottom', fontsize=6)
-    # 在右上角添加类别总数
+
     plt.text(0.95, 0.95, f"Total Count: {total_count}", ha='right', va='top', fontsize=10,
              transform=plt.gca().transAxes)
-
-    # 设置 y 轴上限以提供更多空间
     plt.ylim(0, 1.05)
-    # 调整布局，避免标签被裁剪
     plt.tight_layout()
-    # 如果标签仍然超出，增加调整边距
     plt.subplots_adjust(top=0.85)
-    # 保存图像
     plt.savefig(os.path.join(output_evaluate_sample_dir,"category_proportions_freq.png"))
-    # 显示图表
     plt.show()
 
 
 def plot_deletion_length_distribution(excel_file, output_evaluate_sample_dir):
     df = pd.read_excel(excel_file)
 
-    # 转换为数值，去除 NaN
+    # Convert to a numeric value and remove NaN
     deletion_lengths = pd.to_numeric(df['deletion_length'], errors='coerce').dropna()
 
-    # 过滤掉特别小或极端的值，比如小于1的值
+    # Filter out particularly small or extreme values, such as those less than 1
     deletion_lengths = deletion_lengths[deletion_lengths > 0]
 
-    # 对数据取 log10 变换，避免大数值拉伸
+    # Perform a log10 transformation on the data to avoid stretching large values
     log_deletion_lengths = np.log10(deletion_lengths)
 
-    # 提取 sample
+    # extract sample
     sample_name = os.path.basename(output_evaluate_sample_dir)
 
-    # 1. 绘制对数 x 轴 + 对数 y 轴 直方图
+    # 1. Draw logarithmic X-axis and logarithmic Y-axis histograms
     plt.figure(figsize=(10, 6))
     plt.hist(log_deletion_lengths, bins=50, color='skyblue', edgecolor='black')
-    plt.yscale("log")  # 对数 y 轴
+    plt.yscale("log")  
     plt.title(f"{sample_name} Deletion Length Frequency Distribution (Log X)", fontsize=16)
     plt.xlabel("Log10(Deletion Length)", fontsize=14)
     plt.ylabel("Frequency (log scale)", fontsize=14)
     plt.tight_layout()
     plt.savefig(os.path.join(output_evaluate_sample_dir, "deletion_length_distribution_freq_logx.png"))
     plt.show()
-    # 过滤数据：只保留 deletion_length ≤ 1000 的数据点
+    # Filtering data: Only retain data points where deletion_length is ≤ 1000
     filtered_deletion_lengths = deletion_lengths[deletion_lengths <= 1000]
     plt.figure(figsize=(10, 6))
     plt.hist(filtered_deletion_lengths, bins=50, color='salmon', edgecolor='black')
-    plt.yscale("log")  # 对数 y 轴
-    plt.xlim([0, 1000])  # 限制 X 轴范围在 1k 内
+    plt.yscale("log")  
+    plt.xlim([0, 1000])  # Limit the X-axis range to within 1k
     plt.title(f"{sample_name} Deletion Length Frequency Distribution (≤ 1k)", fontsize=16)
     plt.xlabel("Deletion Length", fontsize=14)
     plt.ylabel("Frequency (log scale)", fontsize=14)
 
-    # 设置 X 轴刻度，每隔 100 标一个
+    # Set the X-axis scale, marking one every 100
     plt.xticks(np.arange(0, 1001, 100))
 
     plt.tight_layout()
     plt.savefig(os.path.join(output_evaluate_sample_dir, "deletion_length_distribution_freq_1k_logy.png"))
     plt.show()
 def read_sample_primer_distance_excel(file_path):
-    # 读取 Excel 文件
-    df = pd.read_excel(file_path, dtype=str)  # 以字符串格式读取，防止数据丢失
+    # real Excel file
+    df = pd.read_excel(file_path, dtype=str)  # Read in string format to prevent data loss
 
-    # 构建字典，第一列为 key，后两列为字典形式
+    # Build a dictionary, with the first column being "key" and the last two columns in dictionary form
     data_dict = {
         row["sample"]: {"primer_plus_5bp": row["primer_plus_5bp"],
                         "primer_to_cut_plus20bp": row["primer_to_cut_plus20bp"]}
@@ -676,7 +664,6 @@ def process_sample(sample, cm_dir, output_evaluate_dir,excel_file):
     filter_and_reverse_output_sam = output_dir + sample + '.aln_filtered_primeradd5bp_noadapter_consolidated_tri_filter_and_reverse.sam'
 
     filter_and_reverse_sam(output_sam, filter_and_reverse_output_sam)
-    # TODO: 这里的比对基因组需要根据不同的样本进行调整
 
 
     output_filter_and_reverse_bam = output_dir + sample + '.aln_filtered_primeradd5bp_noadapter_consolidated_tri_filter_and_reverse.bam'
@@ -699,9 +686,7 @@ def process_sample(sample, cm_dir, output_evaluate_dir,excel_file):
     db= os.path.join("/data5/shuyu/result/modify_genome_db/", genome_name,f"{genome_name}_transgene_db")
     #db = '/data5/wangxin/20241001_wcx/PEM-seq-sequences-AAVS1/bwa_mask_KIplasmid_EF1A_addtransgene383bp_hg38.fa_blastndb'
     sm_ki_dic, sm_translocation_dic,small_sm_deletion, medium_sm_deletion, large_sm_deletion,small_indels_dic, wt_dic,small_ms_deletion, medium_ms_deletion, large_ms_deletion, ms_ki_dic, ms_translocation_dic, other_dic,ms_other_dict,ms_translocation_type,sm_translocation_type,deletion_type_length= get_edit_count(output_filter_and_reverse_bam, chr_seq, consolidated_fq_tri_filtered_file, output_dir, sample, db,strand)
-    # 调用函数
-    # 调用 save_dicts_to_excel 函数并将所有字典传入
-    # 调用 save_dicts_to_excel 函数并将每个字典传入对应的位置
+    # call save_dicts_to_excel  passes in all the dictionaries
 
     output_evaluate_sample_dir = os.path.join(output_evaluate_dir,sample)
     cmd = "mkdir {}".format(output_evaluate_sample_dir)
@@ -728,6 +713,6 @@ def process_sample(sample, cm_dir, output_evaluate_dir,excel_file):
     )
     add_columns_from_dicts(os.path.join(output_evaluate_dir,sample,"output.xlsx"), deletion_type_length, ms_translocation_type, sm_translocation_type,
                            os.path.join(output_evaluate_dir,sample,"add_output.xlsx"))
-    # 调用函数并传入 Excel 文件路径
+    # call function and pass in Excel file path
     excel_file = os.path.join(output_evaluate_dir,sample,"add_output.xlsx")
     plot_deletion_length_distribution(excel_file,output_evaluate_sample_dir)
