@@ -19,12 +19,12 @@ from Bio import SeqIO
 # umi_end = 0
 # umi_count_threshold = 2
 def save_pickle(dict, file_path):
-    # 保存 filtered_umi_counter 到 pickle 文件
+    # save filtered_umi_counter to pickle 
     with open(file_path, 'wb') as f:
         pickle.dump(dict, f)
     print(f"Filtered UMI counter saved to {file_path}")
 def load_pickle(file_path="filtered_umi_counter.pkl"):
-    """从 pickle 文件读取 filtered_umi_counter"""
+    """read pickle file from filtered_umi_counter"""
     with open(file_path, 'rb') as f:
         filtered_umi_counter = pickle.load(f)
     print(f"Filtered UMI counter loaded from {file_path}")
@@ -47,44 +47,44 @@ def filter_raw_bam(bam, primer_sequence, adapter_sequence,
     print('get filtered bam, done!')
 
 def check_umi(umi):
-    """检查 UMI 是否长度为 12，且第 4 位和第 9 位都是 'A' 或 'T'"""
+    #Check if the UMI is 12 in length and both the 4th and 9th bits are 'A' or 'T'
     if len(umi) == 12 and umi[3] in {'A', 'T'} and umi[8] in {'A', 'T'}:
         return True
     return False
 def check_umi(umi):
-    """检查 UMI 是否符合 NNNTNNNNTNNN 模式"""
+    """Check whether UMI conforms to the NNNTNNNTNNN mode"""
     if len(umi) == 12 and umi[3] == 'T' and umi[8] == 'T':
         return True
     return False
 
 def read_umis_fq(fastq_file, umi_count_threshold, primer_plus_5bp_sequence, adapter_sequence):
     umi_counter = defaultdict(int)
-    umi_reads = defaultdict(list)  # 存储 UMI 对应的 read.query_sequence
+    umi_reads = defaultdict(list)  # Store the read.query_sequence corresponding to UMI
 
     linker_sequence = "TGATAG"
 
-    # 读取 FASTQ 文件中的每一条记录
+    # read each record in FASTQ file
     for record in SeqIO.parse(fastq_file, "fastq"):
-        seq = str(record.seq)  # 获取序列
+        seq = str(record.seq)  # get seq
         if re.search(primer_plus_5bp_sequence, seq, re.IGNORECASE):  # ignore
             match = list(re.finditer(linker_sequence, seq))
             match1 = list(re.finditer(adapter_sequence, seq))
             if match1:
-                match_end = match1[0].end()  # 第一个 match 位点
+                match_end = match1[0].end()  # first match site
 
                 umi_end = match_end + 12
-                umi = seq[match_end: umi_end]  # 提取 UMI 序列
+                umi = seq[match_end: umi_end]  # extract UMI seq
 
                 if check_umi(umi):
                     umi_counter[umi] += 1
-                    umi_reads[umi].append(record)  # 存储对应的 SeqRecord 对象
+                    umi_reads[umi].append(record)  # Store the corresponding SeqRecord object
                 else:
                     continue
 
-    # 过滤 UMI 计数，生成 filtered_umi_counter
+    # filter UMI counts，generate filtered_umi_counter
     filtered_umi_counter = {umi: count for umi, count in umi_counter.items() if count >= umi_count_threshold}
 
-    # 仅保留 filtered_umi_counter 里的 UMI
+    # only retain  UMI in filtered_umi_counter 
     filtered_umi_reads = {umi: umi_reads[umi] for umi in filtered_umi_counter}
 
     print('get umi counts ' + str(len(umi_counter)) + ' done!')
@@ -137,30 +137,30 @@ def consolidate(min_qual, min_freq, filtered_umi_counter, filtered_umi_reads,pri
     num_consolidated_reads = 0
     dic = {}
 
-    for umi, umi_data in filtered_umi_reads.items():  # umi_data 现在是 SeqRecord 列表
-        read_ids = [record.id for record in umi_data]  # 提取 read ID
-        read_sequences = [str(record.seq) for record in umi_data]  # 提取序列
-        read_qualities = [record.letter_annotations["phred_quality"] for record in umi_data]  # 提取质量分数
+    for umi, umi_data in filtered_umi_reads.items():  # umi_data now is SeqRecord list
+        read_ids = [record.id for record in umi_data]  # extract read ID
+        read_sequences = [str(record.seq) for record in umi_data]  # extract seq
+        read_qualities = [record.letter_annotations["phred_quality"] for record in umi_data]  # Extract the mass fraction
 
         num_input_reads += len(read_sequences)
         num_consolidated_reads += 1
 
-        # 进行碱基合并
-        read_bases_list = list(zip(*read_sequences))  # 读取所有序列的碱基
-        read_quals_list = list(zip(*read_qualities))  # 读取所有序列的质量分数
+        # Perform base merging
+        read_bases_list = list(zip(*read_sequences))  # Read the bases of all sequences
+        read_quals_list = list(zip(*read_qualities))  # Read the mass fraction of all sequences
 
-        # 调用 consolidate_position 进行整合
+        # Call consolidate_position for integration
         final_correct_seq, final_correct_qual = consolidate_position(read_bases_list, read_quals_list, min_qual,
                                                                      min_freq)
 
-        # 计算 UMI 过滤后的计数
+        # Calculate the count after UMI filtering
         molecular_id_length = filtered_umi_counter[umi]
 
-        # 质量分数转换回 ASCII 格式
+        # Convert the mass fraction back to ASCII format
         quality = ''.join(chr(value + 33) for value in final_correct_qual)
 
-        # 存储 UMI 处理后的结果
-        dic[umi] = [final_correct_seq, quality, molecular_id_length, read_ids]  # 保留 read_id 信息
+        # Store the results processed by UMI
+        dic[umi] = [final_correct_seq, quality, molecular_id_length, read_ids]  # retain read_id information
 
     print(f'get consolidated sequence, done! final umi count: {len(dic)}')
     return dic
@@ -172,10 +172,10 @@ def consolidate_bam(dic_bam, consolidated_fq_file):
         for umi, values in dic_bam.items():
             final_correct_seq, quality, molecular_id_length, read_ids = values
 
-            # 生成 read_id，保留 UMI 和 read 数量信息
+            # Generate read_id and retain the information on the number of UMI and read
             fa_read_id = f"{umi}_:{molecular_id_length}_:{len(read_ids)}"
 
-            # 写入 FASTQ 格式
+            # write in FASTQ format
             fq_out.write(f"@{fa_read_id}\n")
             fq_out.write(f"{final_correct_seq}\n")
             fq_out.write("+\n")
@@ -252,10 +252,10 @@ def part_reverse_complement_based_on_strand(samples_seq_dic, samples_strand_dic)
 
 
 def read_excel(file_path):
-    # 读取 Excel 文件
-    df = pd.read_excel(file_path, dtype=str)  # 以字符串格式读取，防止数据丢失
+    # read Excel file
+    df = pd.read_excel(file_path, dtype=str)  # Read in string format to prevent data loss
 
-    # 构建字典，第一列为 key，后两列为字典形式
+    # Build a dictionary, with the first column being "key" and the last two columns in dictionary form
     data_dict = {
         row["sample"]: {"primer_plus_5bp": row["primer_plus_5bp"],
                         "primer_to_cut_plus20bp": row["primer_to_cut_plus20bp"]}
