@@ -42,7 +42,7 @@ This Excel file contains:
 ### 2. Per-sample `output.xlsx`
 
 Located in:  
-`/data5/wangxin/20241001_wcx/shuyu/20250307/{Rename}/output.xlsx`  
+`/xxx/{Rename}/output.xlsx`  
 It must contain:
 - Columns like `chr_seq`, `Start`, `Send`, etc.
 - Only rows with the first column value `offtargetKI` will be used for analysis
@@ -50,7 +50,7 @@ It must contain:
 ### 3. Transgenic `.fa` files
 
 Located in:  
-`/data5/wangxin/20241001_wcx/shuyu/genome/{prefix}/{prefix}_transgene.fa`  
+`/xxx/genome/{prefix}/{prefix}_transgene.fa`  
 The `prefix` is extracted from the `sample` (e.g., AH2-KI → AH2)
 
 ## Output Files
