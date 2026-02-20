@@ -35,14 +35,14 @@ cd PRIME-In_for_T_cell_engineering
 
 pip install -r requirements.txt
 ```
-## remove redundancy seq avoid multi alignment with transgene
+## Remove redundant sequences to avoid multiple alignments to the transgene containing human-derived fragments
 ```
 cd src
 wget http://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.fa.gz
 gunzip hg38.fa.gz
 python remove_specfic_seq_infa.py
 ```
-## Create blastn db
+## Create each sample blastn db
 To generate the BLASTN database, run:
 ```
 python generate_index_add_transgene_fa.py
