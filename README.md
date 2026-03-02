@@ -7,11 +7,11 @@ This code implements our data preprocessing and analysis pipeline for PRIME-In_f
 To ensure successful execution of the pipeline, the following dependencies are required:
 
 - **Python 3** — Programming language for executing the pipeline scripts  
-- **Reference genome FASTA file**  ([Example](https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.26_GRCh38/GCF_000001405.26_GRCh38_genomic.fna.gz)) — Used for alignment and annotation  
+- **Reference genome FASTA file**  ([Example](https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.26_GRCh38/GCF_000001405.26_GRCh38_genomic.fna.gz)) — Used for alignment and annotation
+- [`FLASH`](https://github.com/ebiggers/flash) —Tool for merging Paired-ends reads
 - [`bwa`](http://bio-bwa.sourceforge.net/) — Alignment tool for mapping sequencing reads to the reference genome  
 - [`trimmomatic`](https://github.com/timflutre/trimmomatic/) — Flexible read trimming tool for Illumina NGS data  
 - [`samtools`](https://github.com/samtools/samtools/) — Tool for manipulating alignments in the SAM/BAM format  
-- [`bedtools`](https://bedtools.readthedocs.io/en/latest/) — Genome arithmetic utility  
 - [`blastn`](https://github.com/asadprodhan/blastn/blob/main/README.md) — Nucleotide-Nucleotide BLAST
 
 
